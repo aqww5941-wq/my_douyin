@@ -69,18 +69,13 @@ def scan_files():
                     x_images.append(str(rel_path))
 
     # 更新缓存
-    # 随机打乱以获得更好的浏览体验
-    random.shuffle(douyin_videos)
-    random.shuffle(x_videos)
-    random.shuffle(x_images)
-    
+    # 这里不需要全局 shuffle 了，因为会在 API 里根据 seed 动态 shuffle
     CACHE["douyin"] = douyin_videos
     CACHE["x_video"] = x_videos
     CACHE["x_image"] = x_images
     
     # 推荐：混合抖音和X的视频
     recommend = douyin_videos + x_videos
-    random.shuffle(recommend)
     CACHE["recommend"] = recommend
     
     print(f"扫描完成: 抖音视频 {len(douyin_videos)}, X视频 {len(x_videos)}, X图片 {len(x_images)}")
@@ -93,10 +88,11 @@ async def read_root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 @app.get("/api/list")
-async def get_media_list(tab: str, page: int = 1, size: int = 10):
+async def get_media_list(tab: str, page: int = 1, size: int = 10, seed: int = 0):
     """
     分页获取媒体列表
     tab: recommend | x | douyin | images
+    seed: 随机种子，保证同一会话翻页顺序一致，不同会话顺序不同
     """
     key_map = {
         "recommend": "recommend",
@@ -108,12 +104,20 @@ async def get_media_list(tab: str, page: int = 1, size: int = 10):
     target_key = key_map.get(tab, "recommend")
     source_list = CACHE.get(target_key, [])
     
-    total = len(source_list)
+    # 创建列表副本以避免影响全局缓存
+    current_list = source_list[:]
+    
+    # 如果有种子，使用种子进行确定性随机打乱
+    # 这样翻页（page增加）时，因为seed没变，顺序也是固定的，不会重复或遗漏
+    if seed != 0:
+        random.Random(seed).shuffle(current_list)
+    
+    total = len(current_list)
     start = (page - 1) * size
     end = start + size
     
-    # 简单的切片分页
-    items = source_list[start:end]
+    # 切片分页
+    items = current_list[start:end]
     
     # 构造返回数据
     # type: 'video' or 'image'

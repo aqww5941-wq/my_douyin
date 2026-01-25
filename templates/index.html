@@ -149,6 +149,9 @@
     let isLoading = false;
     let observer;
     let hasMore = true;
+    
+    // 生成当前会话的随机种子
+    let sessionSeed = Date.now();
 
     const container = document.getElementById('feed-container');
 
@@ -169,6 +172,10 @@
         currentTab = tab;
         currentPage = 1;
         hasMore = true;
+        
+        // 切换标签时生成新种子，确保看到新的随机内容
+        sessionSeed = Date.now();
+        
         container.innerHTML = ''; // 清空列表
         container.scrollTop = 0;
         
@@ -180,7 +187,8 @@
         isLoading = true;
 
         try {
-            const res = await fetch(`/api/list?tab=${currentTab}&page=${currentPage}`);
+            // 加上 seed 参数
+            const res = await fetch(`/api/list?tab=${currentTab}&page=${currentPage}&seed=${sessionSeed}`);
             const data = await res.json();
             
             if (data.items.length === 0) {
@@ -254,7 +262,6 @@
         // 监听列表底部的一个虚拟元素
         const sentinel = document.createElement('div');
         container.appendChild(sentinel);
-        // 这里简化处理：我们直接检测倒数第2个元素来触发加载
     }
 
     function refreshObserver() {
@@ -280,7 +287,6 @@
         });
         
         // 简单的无限加载触发机制：
-        // 每次渲染完，检测是否需要加载更多（如果屏幕很高内容很少）
         if (container.scrollHeight <= container.clientHeight + 100) {
             loadData();
         }
