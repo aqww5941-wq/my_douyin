@@ -12,119 +12,124 @@
             color: #fff; 
             font-family: -apple-system, BlinkMacSystemFont, sans-serif; 
             overflow: hidden; 
-            height: 100vh; /* Fallback */
-            height: 100dvh; 
+            height: 100vh; height: 100dvh;
+            user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
         }
 
-        /* 主容器：负责滚动吸附 */
-        #app {
-            height: 100%;
-            width: 100%;
-            position: relative;
-        }
+        #app { height: 100%; width: 100%; position: relative; }
 
         #feed-container {
-            height: calc(100% - 50px); /* 留出底部导航空间 */
+            height: calc(100% - 50px);
             width: 100%;
             overflow-y: scroll;
             scroll-snap-type: y mandatory;
             scroll-behavior: smooth;
         }
-
-        /* 隐藏滚动条 */
         #feed-container::-webkit-scrollbar { display: none; }
         
-        /* 单个媒体容器 */
         .media-item {
-            height: 100%;
-            width: 100%;
-            scroll-snap-align: start;
-            scroll-snap-stop: always;
-            position: relative;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #000;
+            height: 100%; width: 100%;
+            scroll-snap-align: start; scroll-snap-stop: always;
+            position: relative; display: flex; justify-content: center; align-items: center;
+            background: #000; overflow: hidden;
+            transition: opacity 0.3s ease;
         }
 
-        /* 视频样式 */
-        video {
-            width: 100%;
-            height: 100%;
-            object-fit: contain; /* 保持比例，显示全部 */
-            max-height: 100%;
-        }
-
-        /* 图片样式 */
-        img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
+        video, img {
+            width: 100%; height: 100%; object-fit: contain; pointer-events: auto;
         }
 
         /* 底部导航 */
         .navbar {
-            position: absolute;
-            bottom: 0;
-            width: 100%;
-            height: 50px;
-            background: rgba(0,0,0,0.8);
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            border-top: 1px solid #333;
-            z-index: 100;
+            position: absolute; bottom: 0; width: 100%; height: 50px;
+            background: rgba(0,0,0,0.8); display: flex;
+            justify-content: space-around; align-items: center;
+            border-top: 1px solid #333; z-index: 100;
             padding-bottom: env(safe-area-inset-bottom);
         }
-
-        .nav-item {
-            color: #888;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            padding: 10px;
-        }
-
-        .nav-item.active {
-            color: #fff;
-            position: relative;
-        }
-        
+        .nav-item { color: #888; font-size: 14px; font-weight: bold; cursor: pointer; padding: 10px; }
+        .nav-item.active { color: #fff; position: relative; }
         .nav-item.active::after {
-            content: '';
-            position: absolute;
-            bottom: 5px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 20px;
-            height: 2px;
-            background: #fff;
+            content: ''; position: absolute; bottom: 5px; left: 50%;
+            transform: translateX(-50%); width: 20px; height: 2px; background: #fff;
         }
 
-        /* 加载提示 */
         .loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #666;
-            font-size: 12px;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: #666; font-size: 12px;
         }
         
-        /* 静音提示 */
         .mute-overlay {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(0,0,0,0.5);
-            padding: 5px 10px;
-            border-radius: 15px;
-            font-size: 12px;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.3s;
+            position: absolute; top: 20px; right: 20px;
+            background: rgba(0,0,0,0.5); padding: 5px 10px;
+            border-radius: 15px; font-size: 12px; pointer-events: none;
+            opacity: 0; transition: opacity 0.3s; z-index: 50;
         }
         .show-mute { opacity: 1; }
+
+        /* --- 进度条样式 (新增) --- */
+        .progress-touch-area {
+            position: absolute;
+            bottom: 0; left: 0;
+            width: 100%;
+            height: 20px; /* 增加触摸热区高度，方便手指按住 */
+            z-index: 90;
+            display: flex;
+            align-items: flex-end; /* 让进度条贴在底部 */
+            cursor: pointer;
+        }
+
+        .progress-bg {
+            width: 100%;
+            height: 2px; /* 视觉高度 */
+            background: rgba(255, 255, 255, 0.3);
+            position: relative;
+            transition: height 0.2s;
+        }
+
+        /* 拖动时变粗 */
+        .progress-touch-area:active .progress-bg { height: 6px; }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: #fe2c55; /* 抖音红 */
+            position: relative;
+        }
+
+        /* 拖动滑块小球 */
+        .progress-handle {
+            position: absolute;
+            right: -6px; top: 50%; margin-top: -6px;
+            width: 12px; height: 12px;
+            background: #fff;
+            border-radius: 50%;
+            transform: scale(0);
+            transition: transform 0.2s;
+        }
+
+        .progress-touch-area:active .progress-handle { transform: scale(1); }
+
+        /* --- 删除弹窗样式 --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6); z-index: 200;
+            display: none; justify-content: center; align-items: center;
+            backdrop-filter: blur(5px);
+        }
+        .modal-box {
+            background: #1c1c1c; width: 80%; max-width: 300px;
+            border-radius: 16px; padding: 20px; text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+        .modal-title { font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+        .modal-desc { font-size: 14px; color: #aaa; margin-bottom: 20px; line-height: 1.5; }
+        .modal-actions { display: flex; justify-content: space-between; gap: 10px; }
+        .modal-btn {
+            flex: 1; padding: 12px 0; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; border: none;
+        }
+        .btn-cancel { background: #333; color: #fff; }
+        .btn-confirm { background: #fe2c55; color: #fff; }
 
     </style>
 </head>
@@ -143,19 +148,28 @@
     </div>
 </div>
 
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal-box">
+        <div class="modal-title">不感兴趣？</div>
+        <div class="modal-desc">选择“是”将从服务器彻底删除此文件。</div>
+        <div class="modal-actions">
+            <button class="modal-btn btn-cancel" onclick="closeModal()">取消</button>
+            <button class="modal-btn btn-confirm" onclick="confirmDelete()">是，删除</button>
+        </div>
+    </div>
+</div>
+
 <script>
     let currentTab = 'recommend';
     let currentPage = 1;
     let isLoading = false;
-    let observer;
     let hasMore = true;
-    
-    // 生成当前会话的随机种子
     let sessionSeed = Date.now();
-
     const container = document.getElementById('feed-container');
+    
+    // 记录当前操作元素
+    let currentItemToDelete = null;
 
-    // 初始化
     window.onload = () => {
         loadData();
         initObserver();
@@ -163,34 +177,23 @@
 
     function switchTab(tab) {
         if (currentTab === tab) return;
-        
-        // 更新 UI
         document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
         event.target.classList.add('active');
-
-        // 重置状态
         currentTab = tab;
         currentPage = 1;
         hasMore = true;
-        
-        // 切换标签时生成新种子，确保看到新的随机内容
         sessionSeed = Date.now();
-        
-        container.innerHTML = ''; // 清空列表
+        container.innerHTML = '';
         container.scrollTop = 0;
-        
         loadData();
     }
 
     async function loadData() {
         if (isLoading || !hasMore) return;
         isLoading = true;
-
         try {
-            // 加上 seed 参数
             const res = await fetch(`/api/list?tab=${currentTab}&page=${currentPage}&seed=${sessionSeed}`);
             const data = await res.json();
-            
             if (data.items.length === 0) {
                 hasMore = false;
                 if (currentPage === 1) container.innerHTML = '<div class="loading">暂无内容</div>';
@@ -208,95 +211,237 @@
 
     function renderItems(items) {
         const fragment = document.createDocumentFragment();
-        
         items.forEach(item => {
             const div = document.createElement('div');
             div.className = 'media-item';
+            div.dataset.rawPath = item.raw_path;
             
+            // 构造 HTML：增加进度条结构
             if (item.type === 'video') {
-                // iOS 必须: playsinline muted
                 div.innerHTML = `
                     <video src="${item.src}" playsinline webkit-playsinline loop muted></video>
                     <div class="mute-overlay">已静音 (点击取消)</div>
+                    <div class="progress-touch-area">
+                        <div class="progress-bg">
+                            <div class="progress-fill">
+                                <div class="progress-handle"></div>
+                            </div>
+                        </div>
+                    </div>
                 `;
-                
-                // 点击切换静音
-                const video = div.querySelector('video');
-                const overlay = div.querySelector('.mute-overlay');
-                
-                div.onclick = () => {
-                    video.muted = !video.muted;
-                    if (!video.muted) {
-                        overlay.textContent = "已开启声音";
-                        overlay.classList.add('show-mute');
-                        setTimeout(() => overlay.classList.remove('show-mute'), 1500);
-                    } else {
-                        overlay.textContent = "已静音";
-                        overlay.classList.add('show-mute');
-                        setTimeout(() => overlay.classList.remove('show-mute'), 1500);
-                    }
-                };
-                
             } else {
-                // 图片
                 div.innerHTML = `<img src="${item.src}" loading="lazy" />`;
             }
             
+            // 绑定所有事件
+            bindEvents(div, item.type);
             fragment.appendChild(div);
         });
-        
         container.appendChild(fragment);
-        
-        // 重新绑定观察者到新元素
         refreshObserver();
     }
 
-    function initObserver() {
-        // 1. 无限滚动观察者
-        const scrollObserver = new IntersectionObserver((entries) => {
-            if (entries[0].isIntersecting) {
-                loadData();
-            }
-        }, { threshold: 0.1 });
+    // 交互核心逻辑
+    function bindEvents(element, type) {
+        let pressTimer = null;
+        let isLongPress = false;
+        let isScrubbing = false; // 是否正在拖动进度条
 
-        // 监听列表底部的一个虚拟元素
+        const video = element.querySelector('video');
+        const muteOverlay = element.querySelector('.mute-overlay');
+        const progressArea = element.querySelector('.progress-touch-area');
+        const progressFill = element.querySelector('.progress-fill');
+
+        // --- 1. 进度条逻辑 (仅视频) ---
+        if (type === 'video' && video && progressArea) {
+            
+            // 视频播放更新进度条
+            video.addEventListener('timeupdate', () => {
+                if (!isScrubbing && video.duration) {
+                    const pct = (video.currentTime / video.duration) * 100;
+                    progressFill.style.width = `${pct}%`;
+                }
+            });
+
+            // 处理拖动
+            const handleScrub = (e) => {
+                // 阻止冒泡，防止触发父级的长按删除或点击暂停
+                e.stopPropagation(); 
+                
+                const rect = progressArea.getBoundingClientRect();
+                // 获取触摸点或鼠标位置
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                
+                // 计算比例 0 - 1
+                let pct = (clientX - rect.left) / rect.width;
+                pct = Math.max(0, Math.min(1, pct));
+                
+                // 更新 UI
+                progressFill.style.width = `${pct * 100}%`;
+                
+                // 更新视频
+                if (video.duration) {
+                    video.currentTime = pct * video.duration;
+                }
+            };
+
+            const startScrub = (e) => {
+                e.stopPropagation(); // 关键：阻止冒泡
+                isScrubbing = true;
+                handleScrub(e); // 点击即跳转
+            };
+
+            const endScrub = (e) => {
+                e.stopPropagation();
+                isScrubbing = false;
+                // 拖动结束后，如果视频之前在播放，确保继续播放
+                if (video.paused) video.play().catch(()=>{});
+            };
+
+            // 绑定进度条事件
+            progressArea.addEventListener('touchstart', startScrub, {passive: false});
+            progressArea.addEventListener('touchmove', handleScrub, {passive: false});
+            progressArea.addEventListener('touchend', endScrub);
+            // 鼠标兼容
+            progressArea.addEventListener('mousedown', (e) => {
+                isScrubbing = true;
+                handleScrub(e);
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+
+            function onMouseMove(e) { if(isScrubbing) handleScrub(e); }
+            function onMouseUp() { 
+                isScrubbing = false; 
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            }
+        }
+
+        // --- 2. 长按删除与点击逻辑 ---
+        
+        const startPress = (e) => {
+            // 如果点在进度条上，不触发长按
+            if (e.target.closest('.progress-touch-area')) return;
+            if (e.touches && e.touches.length > 1) return;
+
+            isLongPress = false;
+            pressTimer = setTimeout(() => {
+                isLongPress = true;
+                if (navigator.vibrate) navigator.vibrate(50);
+                openDeleteModal(element);
+            }, 800);
+        };
+
+        const endPress = (e) => {
+            if (pressTimer) {
+                clearTimeout(pressTimer);
+                pressTimer = null;
+            }
+        };
+
+        const handleClick = (e) => {
+            // 如果正在拖进度条，或者触发了长按，则不处理点击
+            if (isScrubbing || isLongPress || e.target.closest('.progress-touch-area')) return;
+            
+            if (type === 'video' && video) {
+                video.muted = !video.muted;
+                if (!video.muted) {
+                    muteOverlay.textContent = "已开启声音";
+                    muteOverlay.classList.add('show-mute');
+                    setTimeout(() => muteOverlay.classList.remove('show-mute'), 1500);
+                } else {
+                    muteOverlay.textContent = "已静音";
+                    muteOverlay.classList.add('show-mute');
+                    setTimeout(() => muteOverlay.classList.remove('show-mute'), 1500);
+                }
+            }
+        };
+
+        // 绑定容器事件
+        element.addEventListener('touchstart', startPress, {passive: true});
+        element.addEventListener('touchend', endPress);
+        element.addEventListener('touchmove', endPress); // 滑动取消长按
+        element.addEventListener('mousedown', startPress);
+        element.addEventListener('mouseup', endPress);
+        element.addEventListener('click', handleClick);
+    }
+
+    // --- 删除逻辑 ---
+    const modal = document.getElementById('deleteModal');
+
+    function openDeleteModal(element) {
+        currentItemToDelete = element;
+        modal.style.display = 'flex';
+    }
+
+    function closeModal() {
+        modal.style.display = 'none';
+        currentItemToDelete = null;
+    }
+
+    async function confirmDelete() {
+        if (!currentItemToDelete) return;
+        const element = currentItemToDelete;
+        const rawPath = element.dataset.rawPath;
+        
+        closeModal();
+
+        try {
+            const res = await fetch('/api/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: rawPath })
+            });
+            const data = await res.json();
+
+            if (data.status === 'success') {
+                const nextElement = element.nextElementSibling;
+                element.style.opacity = '0';
+                setTimeout(() => {
+                    element.remove();
+                    if (nextElement && nextElement.classList.contains('media-item')) {
+                        nextElement.scrollIntoView({ behavior: 'smooth' });
+                    }
+                    refreshObserver();
+                }, 300);
+            } else {
+                alert("删除失败: " + data.message);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function initObserver() {
+        const scrollObserver = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) loadData();
+        }, { threshold: 0.1 });
         const sentinel = document.createElement('div');
         container.appendChild(sentinel);
     }
 
     function refreshObserver() {
-        // 视频自动播放观察者
         const videoObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 const video = entry.target.querySelector('video');
                 if (!video) return;
-
                 if (entry.isIntersecting) {
-                    // 进入视野：播放
                     video.play().catch(e => console.log("Auto-play blocked"));
                 } else {
-                    // 离开视野：暂停
                     video.pause();
-                    video.currentTime = 0; // 可选：重置进度
+                    video.currentTime = 0;
                 }
             });
-        }, { threshold: 0.6 }); // 60% 可见时触发
+        }, { threshold: 0.6 });
 
         document.querySelectorAll('.media-item').forEach(item => {
             videoObserver.observe(item);
         });
         
-        // 简单的无限加载触发机制：
         if (container.scrollHeight <= container.clientHeight + 100) {
             loadData();
         }
-        
-        // 监听滚动到底部
-        container.onscroll = () => {
-             if(container.scrollTop + container.clientHeight >= container.scrollHeight - 300) {
-                 loadData();
-             }
-        };
     }
 </script>
 

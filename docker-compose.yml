@@ -8,6 +8,6 @@ services:
     volumes:
       # 映射宿主机的 Content 目录到容器内的 /app/content
       # 设置为 ro (read-only) 保护源文件安全
-      - /home/aqww/crawler/Content:/app/content:ro
+      - /home/aqww/crawler/Content:/app/content
     environment:
       - MAX_WORKERS=4
