@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Media Browser</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            background-color: #000; 
+            color: #fff; 
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif; 
+            overflow: hidden; 
+            height: 100vh; /* Fallback */
+            height: 100dvh; 
+        }
+
+        /* 主容器：负责滚动吸附 */
+        #app {
+            height: 100%;
+            width: 100%;
+            position: relative;
+        }
+
+        #feed-container {
+            height: calc(100% - 50px); /* 留出底部导航空间 */
+            width: 100%;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            scroll-behavior: smooth;
+        }
+
+        /* 隐藏滚动条 */
+        #feed-container::-webkit-scrollbar { display: none; }
+        
+        /* 单个媒体容器 */
+        .media-item {
+            height: 100%;
+            width: 100%;
+            scroll-snap-align: start;
+            scroll-snap-stop: always;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #000;
+        }
+
+        /* 视频样式 */
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* 保持比例，显示全部 */
+            max-height: 100%;
+        }
+
+        /* 图片样式 */
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* 底部导航 */
+        .navbar {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 50px;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            border-top: 1px solid #333;
+            z-index: 100;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .nav-item {
+            color: #888;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 10px;
+        }
+
+        .nav-item.active {
+            color: #fff;
+            position: relative;
+        }
+        
+        .nav-item.active::after {
+            content: '';
+            position: absolute;
+            bottom: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 2px;
+            background: #fff;
+        }
+
+        /* 加载提示 */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #666;
+            font-size: 12px;
+        }
+        
+        /* 静音提示 */
+        .mute-overlay {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.5);
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .show-mute { opacity: 1; }
+
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <div id="feed-container">
+        <div class="loading">加载中...</div>
+    </div>
+
+    <div class="navbar">
+        <div class="nav-item active" onclick="switchTab('recommend')">推荐</div>
+        <div class="nav-item" onclick="switchTab('x')">X视频</div>
+        <div class="nav-item" onclick="switchTab('douyin')">抖音</div>
+        <div class="nav-item" onclick="switchTab('images')">图片</div>
+    </div>
+</div>
+
+<script>
+    let currentTab = 'recommend';
+    let currentPage = 1;
+    let isLoading = false;
+    let observer;
+    let hasMore = true;
+
+    const container = document.getElementById('feed-container');
+
+    // 初始化
+    window.onload = () => {
+        loadData();
+        initObserver();
+    };
+
+    function switchTab(tab) {
+        if (currentTab === tab) return;
+        
+        // 更新 UI
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        event.target.classList.add('active');
+
+        // 重置状态
+        currentTab = tab;
+        currentPage = 1;
+        hasMore = true;
+        container.innerHTML = ''; // 清空列表
+        container.scrollTop = 0;
+        
+        loadData();
+    }
+
+    async function loadData() {
+        if (isLoading || !hasMore) return;
+        isLoading = true;
+
+        try {
+            const res = await fetch(`/api/list?tab=${currentTab}&page=${currentPage}`);
+            const data = await res.json();
+            
+            if (data.items.length === 0) {
+                hasMore = false;
+                if (currentPage === 1) container.innerHTML = '<div class="loading">暂无内容</div>';
+            } else {
+                renderItems(data.items);
+                currentPage++;
+                hasMore = data.has_more;
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            isLoading = false;
+        }
+    }
+
+    function renderItems(items) {
+        const fragment = document.createDocumentFragment();
+        
+        items.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'media-item';
+            
+            if (item.type === 'video') {
+                // iOS 必须: playsinline muted
+                div.innerHTML = `
+                    <video src="${item.src}" playsinline webkit-playsinline loop muted></video>
+                    <div class="mute-overlay">已静音 (点击取消)</div>
+                `;
+                
+                // 点击切换静音
+                const video = div.querySelector('video');
+                const overlay = div.querySelector('.mute-overlay');
+                
+                div.onclick = () => {
+                    video.muted = !video.muted;
+                    if (!video.muted) {
+                        overlay.textContent = "已开启声音";
+                        overlay.classList.add('show-mute');
+                        setTimeout(() => overlay.classList.remove('show-mute'), 1500);
+                    } else {
+                        overlay.textContent = "已静音";
+                        overlay.classList.add('show-mute');
+                        setTimeout(() => overlay.classList.remove('show-mute'), 1500);
+                    }
+                };
+                
+            } else {
+                // 图片
+                div.innerHTML = `<img src="${item.src}" loading="lazy" />`;
+            }
+            
+            fragment.appendChild(div);
+        });
+        
+        container.appendChild(fragment);
+        
+        // 重新绑定观察者到新元素
+        refreshObserver();
+    }
+
+    function initObserver() {
+        // 1. 无限滚动观察者
+        const scrollObserver = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) {
+                loadData();
+            }
+        }, { threshold: 0.1 });
+
+        // 监听列表底部的一个虚拟元素
+        const sentinel = document.createElement('div');
+        container.appendChild(sentinel);
+        // 这里简化处理：我们直接检测倒数第2个元素来触发加载
+    }
+
+    function refreshObserver() {
+        // 视频自动播放观察者
+        const videoObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                const video = entry.target.querySelector('video');
+                if (!video) return;
+
+                if (entry.isIntersecting) {
+                    // 进入视野：播放
+                    video.play().catch(e => console.log("Auto-play blocked"));
+                } else {
+                    // 离开视野：暂停
+                    video.pause();
+                    video.currentTime = 0; // 可选：重置进度
+                }
+            });
+        }, { threshold: 0.6 }); // 60% 可见时触发
+
+        document.querySelectorAll('.media-item').forEach(item => {
+            videoObserver.observe(item);
+        });
+        
+        // 简单的无限加载触发机制：
+        // 每次渲染完，检测是否需要加载更多（如果屏幕很高内容很少）
+        if (container.scrollHeight <= container.clientHeight + 100) {
+            loadData();
+        }
+        
+        // 监听滚动到底部
+        container.onscroll = () => {
+             if(container.scrollTop + container.clientHeight >= container.scrollHeight - 300) {
+                 loadData();
+             }
+        };
+    }
+</script>
+
+</body>
+</html>

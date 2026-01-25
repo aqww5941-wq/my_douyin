@@ -1,0 +1,16 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  media-server:
+    build: .
+    container_name: my_media_server
+    restart: always
+    ports:
+      - "9000:8000"
+    volumes:
+      # 映射宿主机的 Content 目录到容器内的 /app/content
+      # 设置为 ro (read-only) 保护源文件安全
+      - /home/aqww/crawler/Content:/app/content:ro
+    environment:
+      - MAX_WORKERS=4
