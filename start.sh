@@ -1,4 +1,6 @@
 #!/bin/bash
+set -euo pipefail
+
 echo "==> 停掉旧容器..."
 docker compose down
 

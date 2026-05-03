@@ -1,402 +1,458 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Private Player Pro</title>
-    <style>
-        :root { --bg-color: #000; --text-color: #fff; --accent-color: #fe2c55; --safe-area-bottom: env(safe-area-inset-bottom); }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: var(--bg-color); color: var(--text-color); overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, sans-serif; user-select: none; -webkit-user-select: none; }
-        
-        .swiper-container { width: 100%; height: 100%; overflow-y: scroll; scroll-snap-type: y mandatory; scrollbar-width: none; }
-        .swiper-container::-webkit-scrollbar { display: none; }
-        .swiper-container.locked { overflow-y: hidden !important; }
-        .swiper-slide { width: 100%; height: 100%; scroll-snap-align: start; scroll-snap-stop: always; position: relative; display: flex; justify-content: center; align-items: center; overflow: hidden; background: #000; }
-        
-        video { width: 100%; height: 100%; object-fit: contain; display: block; pointer-events: none; z-index: 5; }
-        .img-wrapper { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; pointer-events: none; }
-        .img-bg-blur { position: absolute; inset: -20px; background-size: cover; background-position: center; filter: blur(25px) brightness(0.5); transform: scale(1.1); z-index: 1; }
-        .img-main { position: relative; width: 100%; height: 100%; object-fit: contain; z-index: 2; filter: drop-shadow(0 0 15px rgba(0,0,0,0.5)); transition: transform 0.3s ease; }
-        
-        /* 顶部导航 */
-        .top-nav { position: fixed; top: 0; left: 0; width: 100%; z-index: 100; padding-top: max(10px, env(safe-area-inset-top)); background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent); display: flex; justify-content: center; align-items: center; gap: 15px; }
-        .nav-item { opacity: 0.5; padding: 10px 5px; cursor: pointer; font-size: 16px; transition: 0.3s; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
-        .nav-item.active { opacity: 1; transform: scale(1.1); font-weight: bold; }
-        .nav-item.active::after { content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 20px; height: 3px; background: #fff; border-radius: 2px; }
-        
-        /* 右侧栏 */
-        .side-bar { position: absolute; right: 12px; bottom: calc(100px + var(--safe-area-bottom)); display: flex; flex-direction: column; gap: 25px; z-index: 10; }
-        .btn-group { display: flex; flex-direction: column; align-items: center; gap: 5px; }
-        .btn-icon { width: 50px; height: 50px; border-radius: 50%; background: rgba(30,30,30,0.4); backdrop-filter: blur(10px); display: flex; justify-content: center; align-items: center; font-size: 24px; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 4px 10px rgba(0,0,0,0.3); transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .btn-text { font-size: 11px; font-weight: bold; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
-        
-        /* 点赞动画类 */
-        .btn-icon.liked { color: var(--accent-color); border-color: rgba(254, 44, 85, 0.5); }
-        .pop-anim { animation: pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Douyin/X Feed</title>
+  <style>
+    :root {
+      --bg: #000;
+      --text: #fff;
+      --muted: rgba(255,255,255,0.72);
+      --accent: #fe2c55;
+      --safe-top: env(safe-area-inset-top);
+      --safe-bottom: env(safe-area-inset-bottom);
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      margin: 0; width: 100%; height: 100%; background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; overflow: hidden;
+    }
 
-        /* 视频进度条 */
-        .video-controls { position: absolute; bottom: calc(50px + var(--safe-area-bottom)); left: 10px; right: 80px; z-index: 20; display: flex; align-items: center; gap: 8px; opacity: 0.8; transition: opacity 0.3s; }
-        .video-time { font-size: 10px; font-family: monospace; color: rgba(255,255,255,0.8); width: 35px; text-shadow: 0 1px 2px #000; }
-        .video-seek { flex: 1; -webkit-appearance: none; appearance: none; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.3); outline: none; transition: height 0.1s; }
-        .video-controls:active .video-seek, .video-seek:active { height: 6px; }
-        .video-seek::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 12px; height: 12px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.5); transform: scale(0); transition: transform 0.1s; }
-        .video-controls:active .video-seek::-webkit-slider-thumb, .video-seek:active::-webkit-slider-thumb { transform: scale(1); }
+    .top-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 120;
+      display: flex; justify-content: center; gap: 18px;
+      padding: calc(var(--safe-top) + 8px) 12px 10px;
+      background: linear-gradient(to bottom, rgba(0,0,0,.65), rgba(0,0,0,0));
+    }
+    .nav-item {
+      position: relative; font-size: 17px; font-weight: 600; color: rgba(255,255,255,.58);
+      padding: 8px 2px; cursor: pointer;
+    }
+    .nav-item.active { color: #fff; }
+    .nav-item.active::after {
+      content: ""; position: absolute; left: 50%; transform: translateX(-50%);
+      bottom: 0; width: 20px; height: 3px; background: #fff; border-radius: 2px;
+    }
 
-        /* ASMR 抽屉 */
-        #asmr-drawer { position: fixed; bottom: 0; left: 0; width: 100%; height: 60%; background: rgba(20, 20, 20, 0.95); backdrop-filter: blur(30px); border-top: 1px solid rgba(255,255,255,0.1); border-radius: 20px 20px 0 0; z-index: 2000; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); padding: 20px; display: flex; flex-direction: column; }
-        #asmr-drawer.open { transform: translateY(0); }
-        .drawer-handle { width: 40px; height: 5px; background: rgba(255,255,255,0.2); margin: -10px auto 20px auto; border-radius: 10px; }
-        .asmr-player-ui { margin-bottom: 20px; padding: 15px; border-radius: 15px; background: rgba(255,255,255,0.05); }
-        .track-info { font-size: 15px; font-weight: bold; margin-bottom: 10px; color: #fff; text-align: center; }
-        .progress-box { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-        .time-label { font-size: 10px; color: #aaa; width: 35px; font-family: monospace; }
-        #asmr-seek { flex: 1; height: 3px; accent-color: var(--accent-color); }
-        .asmr-list { flex: 1; overflow-y: auto; }
-        .asmr-item { padding: 12px; border-radius: 8px; margin-bottom: 4px; font-size: 13px; color: #ccc; display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.02); }
-        .asmr-item.active { color: #fff; background: rgba(254, 44, 85, 0.15); font-weight: bold; }
+    .swiper-container {
+      width: 100%; height: 100%; overflow-y: scroll; scroll-snap-type: y mandatory; scrollbar-width: none;
+    }
+    .swiper-container::-webkit-scrollbar { display: none; }
+    .swiper-slide {
+      position: relative; width: 100%; height: 100%; scroll-snap-align: start; overflow: hidden; background: #000;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .swiper-slide::after {
+      content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 48%; z-index: 7;
+      background: linear-gradient(to top, rgba(0,0,0,.78), rgba(0,0,0,.35), rgba(0,0,0,0));
+      pointer-events: none;
+    }
+    video, .image-full {
+      width: 100%; height: 100%;
+    }
+    video { object-fit: contain; background: #000; }
+    .image-full {
+      object-fit: contain;
+      background: #000;
+    }
 
-        /* 删除反馈 */
-        .delete-indicator { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 120px; height: 120px; border-radius: 20px; background: rgba(0,0,0,0.8); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 3000; backdrop-filter: blur(5px); }
-        .delete-ring svg { width: 60px; height: 60px; transform: rotate(-90deg); }
-        .delete-ring circle { fill: none; stroke: var(--accent-color); stroke-width: 5; stroke-dasharray: 188; stroke-dashoffset: 188; }
-        
-        .loading-spinner { position: absolute; width: 40px; height: 40px; z-index: 20; border: 3px solid rgba(255,255,255,0.2); border-top-color: var(--accent-color); border-radius: 50%; animation: spin 0.8s linear infinite; pointer-events: none; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        #start-mask { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; justify-content: center; align-items: center; font-size: 20px; }
+    .image-feed {
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      padding: calc(var(--safe-top) + 56px) 0 calc(86px + var(--safe-bottom));
+      display: none;
+      scrollbar-width: none;
+      background: linear-gradient(180deg, #0a0a0a 0%, #000 28%);
+    }
+    .image-feed::-webkit-scrollbar { display: none; }
+    .image-card {
+      margin: 0 0 2px;
+      overflow: hidden;
+      background: #000;
+    }
+    .image-card img {
+      display: block;
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+      background: #000;
+    }
 
-        /* ================== 新增：区域选择层样式 ================== */
-        #zone-overlay {
-            position: fixed; inset: 0; background: #000; z-index: 10000;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            transition: opacity 0.5s ease;
-        }
-        .zone-card {
-            background: rgba(255,255,255,0.05); backdrop-filter: blur(20px);
-            padding: 40px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.1);
-            text-align: center; width: 85%; max-width: 400px;
-        }
-        .zone-input {
-            width: 100%; background: transparent; border: none; border-bottom: 2px solid var(--accent-color);
-            color: #fff; font-size: 24px; text-align: center; padding: 10px; outline: none; margin-top: 20px;
-        }
-        .zone-hint { font-size: 12px; color: #666; margin-top: 15px; }
-    </style>
+    .meta-panel {
+      position: absolute; left: 12px; right: 88px; bottom: calc(90px + var(--safe-bottom)); z-index: 20;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .meta-user { font-size: 16px; font-weight: 700; }
+    .meta-desc { font-size: 14px; color: #f0f0f0; }
+
+    .side-bar {
+      position: absolute; right: 10px; bottom: calc(108px + var(--safe-bottom)); z-index: 22;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .btn-group { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .btn-icon {
+      width: 46px; height: 46px; border-radius: 50%;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(28,28,28,.4);
+      display: flex; justify-content: center; align-items: center; font-size: 21px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .btn-icon.liked { color: var(--accent); border-color: rgba(254,44,85,.5); }
+    .btn-text { font-size: 11px; color: var(--muted); }
+
+    .asmr-mini {
+      position: fixed; left: 12px; right: 12px; bottom: calc(62px + var(--safe-bottom)); z-index: 160;
+      display: none; align-items: center; gap: 8px;
+      border-radius: 999px; padding: 8px 12px;
+      background: rgba(20,20,20,.82); border: 1px solid rgba(255,255,255,.12);
+      font-size: 12px; color: #fff;
+    }
+    #asmrTrack {
+      flex: 1;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.3);
+      color: #fff;
+      padding: 4px 10px;
+    }
+    .asmr-mini button {
+      border: none; color: #fff; background: var(--accent); border-radius: 999px; width: 28px; height: 28px; cursor: pointer;
+    }
+
+    .bottom-nav {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 140;
+      padding: 8px 10px calc(6px + var(--safe-bottom));
+      display: flex; justify-content: space-around;
+      background: linear-gradient(to top, rgba(0,0,0,.92), rgba(0,0,0,.2));
+      border-top: 1px solid rgba(255,255,255,.08);
+    }
+    .bottom-nav.hidden { display: none; }
+    .bottom-item { display: flex; flex-direction: column; align-items: center; gap: 4px; color: rgba(255,255,255,.68); font-size: 11px; }
+    .bottom-item.active { color: #fff; }
+    .bottom-item .icon { font-size: 19px; }
+  </style>
 </head>
 <body>
-    <div id="zone-overlay">
-        <div class="zone-card">
-            <div style="font-size: 40px; margin-bottom: 10px;">🔐</div>
-            <div style="font-size: 18px; font-weight: bold; letter-spacing: 2px;">选择目标区域</div>
-            <input type="text" class="zone-input" id="zoneInput" maxlength="1" autofocus placeholder="?">
-            <div class="zone-hint">请输入访问代码以继续</div>
-        </div>
-    </div>
+  <div class="top-nav" id="topNav">
+    <div class="nav-item active" data-tab="recommend">推荐</div>
+    <div class="nav-item" data-tab="douyin">抖音</div>
+    <div class="nav-item" data-tab="tiktok">TikTok</div>
+    <div class="nav-item" data-tab="x">x</div>
+    <div class="nav-item" data-tab="images">图片</div>
+    <div class="nav-item" data-tab="likes">点赞</div>
+  </div>
 
-    <div class="top-nav" id="topNav">
-        <div class="nav-item active" data-tab="recommend">推荐</div>
-        <div class="nav-item" data-tab="douyin">抖音</div>
-        <div class="nav-item" data-tab="x">X</div>
-        <div class="nav-item" data-tab="images">图片</div>
-        <div class="nav-item" data-tab="likes">喜欢</div>
-    </div>
-    
-    <div class="swiper-container" id="swiper"></div>
-    
-    <div id="asmr-drawer">
-        <div class="drawer-handle" onclick="closeAsmr()"></div>
-        <div class="asmr-player-ui">
-            <div class="track-info" id="asmr-title">ASMR 沉浸模式</div>
-            <div class="progress-box">
-                <span class="time-label" id="cur-time">00:00</span>
-                <input type="range" id="asmr-seek" value="0" min="0" max="100">
-                <span class="time-label" id="dur-time">00:00</span>
-            </div>
-            <div style="display: flex; justify-content: center; align-items: center; gap: 30px; margin-top: 10px;">
-                <span onclick="playPrevAsmr()" style="font-size: 24px;">⏮</span>
-                <span onclick="togglePlayAsmr()" id="play-btn" style="font-size: 36px;">▶️</span>
-                <span onclick="playNextAsmr()" style="font-size: 24px;">⏭</span>
-            </div>
-        </div>
-        <div class="asmr-list" id="asmr-list"></div>
-    </div>
-    
-    <div id="start-mask" style="display:none;">点击开始 (Pro版)</div>
-    
-    <div class="delete-indicator" id="delIndicator">
-        <div class="delete-ring"><svg><circle cx="30" cy="30" r="30"></circle></svg></div>
-        <span style="font-size: 13px; color: #fff; margin-top: 15px; font-weight: 600;">确认删除</span>
-    </div>
-    
-    <audio id="asmrAudio"></audio>
+  <div class="swiper-container" id="swiper"></div>
+  <div class="image-feed" id="imageFeed"></div>
+
+  <div class="asmr-mini" id="asmrMini">
+    <button id="asmrToggle">▶</button>
+    <select id="asmrTrack"></select>
+  </div>
+
+  <div class="bottom-nav">
+    <div class="bottom-item active" data-jump="recommend"><span class="icon">🏠</span><span>首页</span></div>
+    <div class="bottom-item" data-jump="likes"><span class="icon">❤️</span><span>点赞</span></div>
+  </div>
+
+  <audio id="asmrAudio"></audio>
 
 <script>
-const CONFIG = {
-    preloadCount: 1, 
-};
-
 const state = {
-    currentTab: 'recommend',
-    items: [],
-    page: 1,
-    activeIndex: 0,
-    asmrList: [],
-    currentAsmrIdx: -1,
-    isPressing: false,
-    seeking: false,
-    zone: 'm' // 默认主区
+  currentTab: 'recommend',
+  items: [],
+  page: 1,
+  activeIndex: 0,
+  loading: false,
+  hasMore: true,
+  asmrStarted: false,
+  asmrLoaded: false,
+  likedSet: new Set()
 };
 
 const els = {
-    swiper: document.getElementById('swiper'),
-    asmrDrawer: document.getElementById('asmr-drawer'),
-    asmrAudio: document.getElementById('asmrAudio'),
-    asmrTitle: document.getElementById('asmr-title'),
-    asmrSeek: document.getElementById('asmr-seek'),
-    delIndicator: document.getElementById('delIndicator'),
-    delCircle: document.querySelector('.delete-ring circle'),
-    zoneOverlay: document.getElementById('zone-overlay'),
-    zoneInput: document.getElementById('zoneInput'),
-    topNav: document.getElementById('topNav')
+  swiper: document.getElementById('swiper'),
+  imageFeed: document.getElementById('imageFeed'),
+  bottomNav: document.querySelector('.bottom-nav'),
+  asmrAudio: document.getElementById('asmrAudio'),
+  asmrMini: document.getElementById('asmrMini'),
+  asmrToggle: document.getElementById('asmrToggle'),
+  asmrTrack: document.getElementById('asmrTrack')
 };
 
-// ================== 新增：区域选择逻辑 ==================
-els.zoneInput.addEventListener('input', function(e) {
-    const val = e.target.value.toLowerCase();
-    if (val === 'm' || val === 'n') {
-        state.zone = val;
-        enterZone();
-    }
-});
-
-function enterZone() {
-    els.zoneOverlay.style.opacity = '0';
-    setTimeout(() => {
-        els.zoneOverlay.style.display = 'none';
-        
-        if (state.zone === 'n') {
-            // N号区：进入日常模式
-            state.currentTab = 'normal';
-            els.topNav.style.display = 'none'; // 隐藏所有Tab导航
-        } else {
-            // M号区：正常模式
-            state.currentTab = 'recommend';
-            els.topNav.style.display = 'flex';
-        }
-        
-        init(); // 触发原有初始化
-    }, 500);
+function bindTabs() {
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.onclick = () => switchTab(item.dataset.tab);
+  });
+  document.querySelectorAll('.bottom-item').forEach(item => {
+    item.onclick = () => switchTab(item.dataset.jump);
+  });
 }
 
-// 修改原有的 start-mask 逻辑，现在由区域选择驱动
-// document.getElementById('start-mask').onclick = ... (这部分现在不再需要，直接走 enterZone)
+async function switchTab(tab) {
+  const active = document.querySelector('.nav-item.active');
+  if (active) active.classList.remove('active');
+  const target = document.querySelector(`.nav-item[data-tab="${tab}"]`);
+  if (target) target.classList.add('active');
 
-async function init() {
-    bindTabs();
-    await loadData(true);
-    fetchAsmrList();
-    setupAsmrPlayer();
+  document.querySelectorAll('.bottom-item').forEach(b => b.classList.remove('active'));
+  const bottomTarget = document.querySelector(`.bottom-item[data-jump="${tab === 'likes' ? 'likes' : 'recommend'}"]`);
+  if (bottomTarget) bottomTarget.classList.add('active');
+
+  state.currentTab = tab;
+  state.activeIndex = 0;
+  await loadData(true);
+  switchMode();
+  if (state.currentTab === 'images') await ensureAsmr();
 }
 
-async function loadData(isReset = false) {
-    if (isReset) { state.items = []; state.page = 1; els.swiper.innerHTML = ''; }
-    const seed = Math.floor(Date.now()/1000);
-    const res = await fetch(`/api/list?tab=${state.currentTab}&page=${state.page}&size=10&seed=${seed}`);
-    const data = await res.json();
-    
-    state.items = [...state.items, ...data.items];
-    data.items.forEach((item, i) => {
-        const div = document.createElement('div');
-        div.className = 'swiper-slide';
-        div.dataset.index = state.items.length - data.items.length + i;
-        div.dataset.type = item.type;
-        div.dataset.src = item.src;
-        div.dataset.raw = item.raw_path;
-
-        let mediaHtml = '';
-        if (item.type === 'video') {
-            mediaHtml = `<video loop playsinline muted preload="none"></video>`;
-            mediaHtml += `
-            <div class="video-controls">
-                <span class="video-time time-current">00:00</span>
-                <input type="range" class="video-seek" value="0" min="0" max="100" step="0.1">
-                <span class="video-time time-total">00:00</span>
-            </div>
-            `;
-        } else {
-            mediaHtml = `
-                <div class="img-wrapper">
-                    <div class="img-bg-blur" style="background-image: url('${item.src}')"></div>
-                    <img class="img-main" data-src="${item.src}" /> 
-                </div>
-            `;
-        }
-
-        const isLikedTab = state.currentTab === 'likes';
-        const likeClass = isLikedTab ? 'liked' : '';
-        const likeStyle = isLikedTab ? 'color: var(--accent-color);' : '';
-
-        div.innerHTML = `
-            ${mediaHtml}
-            <div class="loading-spinner"></div>
-            <div class="side-bar">
-                <div class="btn-group">
-                    <div class="btn-icon ${likeClass}" style="${likeStyle}" onclick="toggleLike(this, '${item.raw_path}')">❤️</div>
-                    <span class="btn-text">喜欢</span>
-                </div>
-                ${state.currentTab === 'images' ? `
-                <div class="btn-group">
-                    <div class="btn-icon" onclick="openAsmr()">🎧</div>
-                    <span class="btn-text">ASMR</span>
-                </div>` : ''}
-            </div>
-        `;
-        
-        bindSmartInteraction(div);
-        if(item.type === 'video') bindVideoControls(div);
-        els.swiper.appendChild(div);
-    });
-    if (isReset) playCurrent();
-    state.page++;
+function switchMode() {
+  const imageMode = state.currentTab === 'images';
+  els.asmrMini.style.display = imageMode ? 'flex' : 'none';
+  els.swiper.style.display = imageMode ? 'none' : 'block';
+  els.imageFeed.style.display = imageMode ? 'block' : 'none';
+  els.bottomNav.classList.toggle('hidden', imageMode);
+  if (imageMode) {
+    playAsmrIfReady();
+  } else {
+    els.asmrAudio.pause();
+    els.asmrToggle.textContent = '▶';
+  }
 }
 
-// ... 以下为你原本的所有代码，逻辑未改动 ...
+async function loadData(reset = false) {
+  if (state.loading) return;
+  if (reset) {
+    state.items = [];
+    state.page = 1;
+    state.hasMore = true;
+    els.swiper.innerHTML = '';
+    els.imageFeed.innerHTML = '';
+  }
+  if (!state.hasMore) return;
 
-const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-        if (entry.isIntersecting) {
-            const idx = parseInt(entry.target.dataset.index);
-            if (idx !== state.activeIndex) {
-                state.activeIndex = idx;
-                playCurrent();
-                if (idx > state.items.length - 4) loadData();
-            }
-        }
-    });
-}, { root: els.swiper, threshold: 0.6 });
-const mo = new MutationObserver(() => { document.querySelectorAll('.swiper-slide').forEach(s => observer.observe(s)); });
-mo.observe(els.swiper, { childList: true });
+  state.loading = true;
+  const size = 10;
+  const seed = Math.floor(Date.now() / 1000);
+  const useSeed = state.currentTab === 'likes' ? 0 : seed;
+  const res = await fetch(`/api/list?tab=${state.currentTab}&page=${state.page}&size=${size}&seed=${useSeed}`);
+  const data = await res.json();
+
+  state.items = [...state.items, ...data.items];
+  state.hasMore = data.has_more;
+
+  if (state.currentTab === 'images') {
+    renderImageFeed(data.items);
+  } else {
+    renderSlides(data.items);
+  }
+  if (reset) playCurrent();
+
+  state.page += 1;
+  state.loading = false;
+}
+
+function renderSlides(items) {
+  const base = state.items.length - items.length;
+  items.forEach((item, i) => {
+    const idx = base + i;
+    const filename = item.raw_path.split('/').pop() || 'media';
+    const desc = filename.replace(/\.[^/.]+$/, '').replace(/[_-]+/g, ' ').slice(0, 48);
+    const liked = state.likedSet.has(item.raw_path);
+
+    const div = document.createElement('div');
+    div.className = 'swiper-slide';
+    div.dataset.index = idx;
+    div.dataset.src = item.src;
+    div.dataset.path = item.raw_path;
+    div.dataset.type = item.type;
+
+    const mediaHtml = item.type === 'image'
+      ? `<img class="image-full" src="${item.src}" alt="img" loading="lazy" decoding="async">`
+      : `<video loop playsinline muted preload="none"></video>`;
+
+    div.innerHTML = `
+      ${mediaHtml}
+      <div class="meta-panel">
+        <div class="meta-user">@${state.currentTab}_${(idx % 99) + 1}</div>
+        <div class="meta-desc">${desc || '精彩内容持续更新'}</div>
+      </div>
+      <div class="side-bar">
+        <div class="btn-group">
+          <div class="btn-icon like-btn ${liked ? 'liked' : ''}" data-path="${item.raw_path}">❤️</div>
+          <span class="btn-text">${liked ? '已赞' : '点赞'}</span>
+        </div>
+      </div>
+    `;
+    els.swiper.appendChild(div);
+    observer.observe(div);
+  });
+  bindLikeButtons();
+}
+
+function renderImageFeed(items) {
+  items.forEach((item, i) => {
+    const card = document.createElement('div');
+    card.className = 'image-card';
+    card.dataset.path = item.raw_path;
+    card.innerHTML = `
+      <img src="${item.src}" alt="img" loading="lazy" decoding="async">
+    `;
+    els.imageFeed.appendChild(card);
+  });
+}
+
+function bindLikeButtons() {
+  document.querySelectorAll('.like-btn').forEach(btn => {
+    if (btn.dataset.bound) return;
+    btn.dataset.bound = '1';
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+      const path = btn.dataset.path;
+      if (!path) return;
+      const liked = state.likedSet.has(path);
+      const url = liked ? '/api/unlike' : '/api/like';
+      await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path })
+      });
+
+      if (liked) state.likedSet.delete(path);
+      else state.likedSet.add(path);
+
+      btn.classList.toggle('liked', !liked);
+      const text = btn.parentElement.querySelector('.btn-text');
+      if (text) text.textContent = liked ? '点赞' : '已赞';
+
+      if (liked && state.currentTab === 'likes') {
+        const slide = btn.closest('.swiper-slide');
+        if (slide) slide.remove();
+      }
+    };
+  });
+}
+
+function pauseAllVideos() {
+  document.querySelectorAll('.swiper-slide video').forEach(v => v.pause());
+}
 
 function playCurrent() {
-    const slides = document.querySelectorAll('.swiper-slide');
-    const currentIdx = state.activeIndex;
-    slides.forEach(slide => {
-        const idx = parseInt(slide.dataset.index);
-        const video = slide.querySelector('video');
-        const img = slide.querySelector('.img-main');
-        const spinner = slide.querySelector('.loading-spinner');
-
-        if (idx === currentIdx) {
-            if (video) {
-                if (!video.src) { video.src = slide.dataset.src; video.preload = "auto"; }
-                updateVideoDurationUI(slide);
-                video.onplaying = () => { spinner.style.display = 'none'; video.muted = false; };
-                if (video.readyState >= 3) { spinner.style.display = 'none'; video.muted = false; video.play(); } 
-                else { video.muted = false; video.play().catch(e => { video.muted = true; video.play().then(() => spinner.style.display = 'none'); }); }
-            } else if (img) { if (!img.src) img.src = img.dataset.src; spinner.style.display = 'none'; }
-        } else if (idx === currentIdx + 1) {
-            if (video && !video.src) { video.src = slide.dataset.src; video.preload = "metadata"; video.muted = true; }
-            else if (img && !img.src) { img.src = img.dataset.src; }
-        } else {
-            if (video) { video.onplaying = null; video.pause(); if (video.src !== "") { video.removeAttribute('src'); video.load(); spinner.style.display = 'block'; resetVideoControls(slide); } }
-            if (img && Math.abs(idx - currentIdx) > 2) img.removeAttribute('src');
-        }
-    });
-}
-
-function bindSmartInteraction(el) {
-    let pressTimer, startX, startY, isMoving = false;
-    const LONG_PRESS_DELAY = 150; 
-
-    const onStart = (e) => {
-        if (e.target.closest('.btn-icon') || e.target.closest('.video-controls') || e.target.closest('.side-bar') || e.target.closest('#asmr-drawer')) return;
-        const touch = e.touches[0]; startX = touch.pageX; startY = touch.pageY; isMoving = false;
-        pressTimer = setTimeout(() => { if (!isMoving) startDeleteAnimation(el); }, LONG_PRESS_DELAY);
-    };
-
-    const onMove = (e) => {
-        if (startX === undefined) return;
-        if (Math.abs(e.touches[0].pageX - startX) > 10 || Math.abs(e.touches[0].pageY - startY) > 10) { isMoving = true; cancel(); }
-    };
-
-    const onEnd = (e) => {
-        if (startX === undefined) return;
-        if (!isMoving && !state.isPressing) handleVideoClick(el); 
-        cancel();
-    };
-
-    const cancel = () => { clearTimeout(pressTimer); clearTimeout(state.actualDeleteTimer); state.isPressing = false; els.swiper.classList.remove('locked'); els.delIndicator.style.display = 'none'; startX = undefined; };
-    el.ontouchstart = onStart; el.ontouchmove = onMove; el.ontouchend = onEnd;
-}
-
-function bindVideoControls(div) {
-    const video = div.querySelector('video');
-    const seek = div.querySelector('.video-seek');
-    const timeCurr = div.querySelector('.time-current');
-    const timeTotal = div.querySelector('.time-total');
-    
-    video.ontimeupdate = () => {
-        if (!state.seeking) {
-            const pct = (video.currentTime / video.duration) * 100 || 0;
-            seek.value = pct;
-            seek.style.background = `linear-gradient(to right, var(--accent-color) 0%, var(--accent-color) ${pct}%, rgba(255,255,255,0.3) ${pct}%, rgba(255,255,255,0.3) 100%)`;
-            timeCurr.innerText = formatTime(video.currentTime);
-            if(video.duration && !isNaN(video.duration) && timeTotal.innerText === '00:00') timeTotal.innerText = formatTime(video.duration);
-        }
-    };
-    video.onloadedmetadata = () => { timeTotal.innerText = formatTime(video.duration); };
-    seek.oninput = (e) => {
-        state.seeking = true; const pct = e.target.value;
-        seek.style.background = `linear-gradient(to right, var(--accent-color) 0%, var(--accent-color) ${pct}%, rgba(255,255,255,0.3) ${pct}%, rgba(255,255,255,0.3) 100%)`;
-        if(video.duration) timeCurr.innerText = formatTime((pct / 100) * video.duration);
-    };
-    seek.onchange = (e) => { if (video.duration) video.currentTime = (e.target.value / 100) * video.duration; state.seeking = false; if(video.paused) video.play(); };
-    div.querySelector('.video-controls').addEventListener('touchstart', (e) => e.stopPropagation(), {passive: false});
-    div.querySelector('.video-controls').addEventListener('touchmove', (e) => e.stopPropagation(), {passive: false});
-}
-
-function updateVideoDurationUI(div) { const video = div.querySelector('video'); const timeTotal = div.querySelector('.time-total'); if(video.duration && !isNaN(video.duration)) timeTotal.innerText = formatTime(video.duration); }
-function resetVideoControls(div) { const seek = div.querySelector('.video-seek'); if(seek) { seek.value = 0; seek.style.background = `rgba(255,255,255,0.3)`; } const timeCurr = div.querySelector('.time-current'); if(timeCurr) timeCurr.innerText = "00:00"; }
-function handleVideoClick(el) { const v = el.querySelector('video'); if(v) v.paused ? v.play() : v.pause(); }
-function startDeleteAnimation(el) {
-    state.isPressing = true; els.swiper.classList.add('locked'); els.delIndicator.style.display = 'flex';
-    els.delCircle.style.transition = 'none'; els.delCircle.style.strokeDashoffset = '188'; els.delCircle.getBoundingClientRect();
-    els.delCircle.style.transition = `stroke-dashoffset 3000ms linear`; els.delCircle.style.strokeDashoffset = '0';
-    state.actualDeleteTimer = setTimeout(() => { if(confirm("删除此文件？")) executeDelete(el); els.delIndicator.style.display='none'; state.isPressing=false; els.swiper.classList.remove('locked'); }, 3000);
-}
-async function executeDelete(el) { await fetch('/api/delete', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({path: el.dataset.raw}) }); el.style.transform = 'scale(0.8)'; el.style.opacity = '0'; setTimeout(() => { el.remove(); playCurrent(); }, 300); }
-async function fetchAsmrList() { const res = await fetch('/api/list?tab=images&page=1&size=20'); for(let i=0; i<10; i++){ const r = await fetch('/api/asmr/random'); const d = await r.json(); if(d.src) state.asmrList.push(d); } renderAsmrList(); }
-function renderAsmrList() { document.getElementById('asmr-list').innerHTML = state.asmrList.map((item, i) => `<div class="asmr-item" onclick="playAsmr(${i})"><span>${item.raw_path.split('/').pop().substring(0,30)}</span><span>🎵</span></div>`).join(''); }
-function openAsmr() { els.asmrDrawer.classList.add('open'); }
-function closeAsmr() { els.asmrDrawer.classList.remove('open'); }
-function playAsmr(idx) { if(idx < 0 || idx >= state.asmrList.length) return; state.currentAsmrIdx = idx; const item = state.asmrList[idx]; els.asmrAudio.src = item.src; els.asmrTitle.innerText = item.raw_path.split('/').pop(); els.asmrAudio.play(); document.getElementById('play-btn').innerText = '⏸'; document.querySelectorAll('.asmr-item').forEach((el, i) => el.classList.toggle('active', i === idx)); }
-function setupAsmrPlayer() { els.asmrAudio.ontimeupdate = () => { if(!state.seeking) { els.asmrSeek.value = (els.asmrAudio.currentTime/els.asmrAudio.duration)*100 || 0; document.getElementById('cur-time').innerText=formatTime(els.asmrAudio.currentTime); document.getElementById('dur-time').innerText=formatTime(els.asmrAudio.duration); }}; els.asmrAudio.onended = () => playNextAsmr(); els.asmrSeek.oninput = () => state.seeking = true; els.asmrSeek.onchange = () => { els.asmrAudio.currentTime = (els.asmrSeek.value/100)*els.asmrAudio.duration; state.seeking = false; }; }
-function togglePlayAsmr() { if(els.asmrAudio.paused){els.asmrAudio.play();document.getElementById('play-btn').innerText='⏸'}else{els.asmrAudio.pause();document.getElementById('play-btn').innerText='▶️'} }
-function playNextAsmr() { playAsmr((state.currentAsmrIdx + 1) % state.asmrList.length); }
-function playPrevAsmr() { playAsmr((state.currentAsmrIdx - 1 + state.asmrList.length) % state.asmrList.length); }
-function formatTime(s) { if(isNaN(s)) return '00:00'; const m=Math.floor(s/60), rs=Math.floor(s%60); return `${m.toString().padStart(2,'0')}:${rs.toString().padStart(2,'0')}`; }
-function bindTabs() { document.querySelectorAll('.nav-item').forEach(item => { item.onclick = () => { document.querySelector('.nav-item.active').classList.remove('active'); item.classList.add('active'); state.currentTab = item.dataset.tab; loadData(true); }; }); }
-
-function toggleLike(btn, path) {
-    if (navigator.vibrate) navigator.vibrate(50);
-    btn.classList.add('pop-anim');
-    setTimeout(() => btn.classList.remove('pop-anim'), 400);
-    const isLiked = btn.style.color === 'rgb(254, 44, 85)'; 
-    if (isLiked) {
-        btn.style.color = '#fff';
-        btn.style.borderColor = 'rgba(255,255,255,0.15)';
+  const slides = document.querySelectorAll('.swiper-slide');
+  slides.forEach(slide => {
+    const idx = parseInt(slide.dataset.index, 10);
+    const video = slide.querySelector('video');
+    if (!video) return;
+    if (idx === state.activeIndex) {
+      if (!video.src) video.src = slide.dataset.src;
+      video.muted = false;
+      video.play().catch(() => {
+        video.muted = true;
+        video.play();
+      });
     } else {
-        btn.style.color = 'var(--accent-color)';
-        btn.style.borderColor = 'rgba(254, 44, 85, 0.5)';
+      video.pause();
+      if (Math.abs(idx - state.activeIndex) > 2 && video.src) {
+        video.removeAttribute('src');
+        video.load();
+      }
     }
-    fetch('/api/like', { 
-        method: 'POST', 
-        headers: {'Content-Type': 'application/json'}, 
-        body: JSON.stringify({path: path}) 
-    });
-    if(window.event) window.event.stopPropagation();
+  });
 }
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (!entry.isIntersecting) return;
+    const idx = parseInt(entry.target.dataset.index, 10);
+    if (idx !== state.activeIndex) {
+      state.activeIndex = idx;
+      playCurrent();
+      if (idx > state.items.length - 4) loadData(false);
+    }
+  });
+}, { root: els.swiper, threshold: 0.6 });
+
+els.imageFeed.addEventListener('scroll', () => {
+  const nearBottom = els.imageFeed.scrollTop + els.imageFeed.clientHeight > els.imageFeed.scrollHeight - 500;
+  if (nearBottom && state.currentTab === 'images') loadData(false);
+}, { passive: true });
+
+async function ensureAsmr() {
+  const res = await fetch('/api/asmr/list');
+  const data = await res.json();
+  const items = data.items || [];
+  if (!items.length) {
+    els.asmrTrack.innerHTML = '<option value="">暂无 ASMR</option>';
+    state.asmrLoaded = false;
+    return;
+  }
+
+  const current = els.asmrTrack.value;
+  els.asmrTrack.innerHTML = items.map((it, i) => {
+    const name = (it.raw_path || '').split('/').pop() || `track-${i+1}`;
+    return `<option value="${it.src}">${name}</option>`;
+  }).join('');
+  const match = items.some(it => it.src === current);
+  if (match) els.asmrTrack.value = current;
+  state.asmrLoaded = true;
+
+  if (!els.asmrTrack.value) els.asmrTrack.selectedIndex = 0;
+  if (!state.asmrStarted) {
+    els.asmrAudio.src = els.asmrTrack.value;
+    els.asmrAudio.loop = true;
+    state.asmrStarted = true;
+  }
+  playAsmrIfReady();
+}
+
+function playAsmrIfReady() {
+  if (!state.asmrStarted || state.currentTab !== 'images') return;
+  els.asmrAudio.play().then(() => {
+    els.asmrToggle.textContent = '⏸';
+  }).catch(() => {
+    els.asmrToggle.textContent = '▶';
+  });
+}
+
+els.asmrTrack.onchange = () => {
+  if (!els.asmrTrack.value) return;
+  els.asmrAudio.src = els.asmrTrack.value;
+  state.asmrStarted = true;
+  if (state.currentTab === 'images') playAsmrIfReady();
+};
+
+els.asmrToggle.onclick = () => {
+  if (els.asmrAudio.paused) {
+    els.asmrAudio.play();
+    els.asmrToggle.textContent = '⏸';
+  } else {
+    els.asmrAudio.pause();
+    els.asmrToggle.textContent = '▶';
+  }
+};
+
+els.swiper.addEventListener('scroll', () => {
+  const nearBottom = els.swiper.scrollTop + els.swiper.clientHeight > els.swiper.scrollHeight - 500;
+  if (nearBottom) loadData(false);
+}, { passive: true });
+
+async function initLikedSet() {
+  const res = await fetch('/api/list?tab=likes&page=1&size=10000&seed=0');
+  const data = await res.json();
+  (data.items || []).forEach(it => state.likedSet.add(it.raw_path));
+}
+
+async function init() {
+  bindTabs();
+  await initLikedSet();
+  await loadData(true);
+  switchMode();
+}
+
+init();
 </script>
 </body>
 </html>
