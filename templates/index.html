@@ -68,6 +68,7 @@
     }
     .image-feed::-webkit-scrollbar { display: none; }
     .image-card {
+      position: relative;
       margin: 0 0 2px;
       overflow: hidden;
       background: #000;
@@ -101,7 +102,18 @@
       user-select: none;
     }
     .btn-icon.liked { color: var(--accent); border-color: rgba(254,44,85,.5); }
+    .btn-icon.delete-btn { color: #ff4d4f; border-color: rgba(255,77,79,.45); }
+    .btn-icon.delete-btn:active { background: rgba(254,44,85,.35); border-color: rgba(254,44,85,.6); }
     .btn-text { font-size: 11px; color: var(--muted); }
+
+    .image-card .delete-overlay {
+      position: absolute; top: 8px; right: 8px; z-index: 20;
+      width: 34px; height: 34px; border-radius: 50%;
+      background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.22);
+      color: #fff; font-size: 16px; display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+    }
+    .image-card .delete-overlay:active { background: rgba(254,44,85,.4); }
 
     .asmr-mini {
       position: fixed; left: 12px; right: 12px; bottom: calc(62px + var(--safe-bottom)); z-index: 160;
@@ -285,12 +297,17 @@ function renderSlides(items) {
           <div class="btn-icon like-btn ${liked ? 'liked' : ''}" data-path="${item.raw_path}">❤️</div>
           <span class="btn-text">${liked ? '已赞' : '点赞'}</span>
         </div>
+        <div class="btn-group">
+          <div class="btn-icon delete-btn" data-path="${item.raw_path}">✕</div>
+          <span class="btn-text">删除</span>
+        </div>
       </div>
     `;
     els.swiper.appendChild(div);
     observer.observe(div);
   });
   bindLikeButtons();
+  bindDeleteButtons();
 }
 
 function renderImageFeed(items) {
@@ -300,9 +317,11 @@ function renderImageFeed(items) {
     card.dataset.path = item.raw_path;
     card.innerHTML = `
       <img src="${item.src}" alt="img" loading="lazy" decoding="async">
+      <div class="delete-overlay" data-path="${item.raw_path}">✕</div>
     `;
     els.imageFeed.appendChild(card);
   });
+  bindDeleteButtons();
 }
 
 function bindLikeButtons() {
@@ -332,6 +351,35 @@ function bindLikeButtons() {
         const slide = btn.closest('.swiper-slide');
         if (slide) slide.remove();
       }
+    };
+  });
+}
+
+async function deleteMedia(path, el) {
+  if (!confirm('确定要删除这个文件吗？')) return;
+  const res = await fetch('/api/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path })
+  });
+  const data = await res.json();
+  if (data.status !== 'success') return;
+
+  state.likedSet.delete(path);
+  state.items = state.items.filter(item => item.raw_path !== path);
+  el.remove();
+}
+
+function bindDeleteButtons() {
+  document.querySelectorAll('.delete-btn, .delete-overlay').forEach(btn => {
+    if (btn.dataset.deleteBound) return;
+    btn.dataset.deleteBound = '1';
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+      const path = btn.dataset.path;
+      if (!path) return;
+      const container = btn.closest('.swiper-slide') || btn.closest('.image-card');
+      await deleteMedia(path, container);
     };
   });
 }
