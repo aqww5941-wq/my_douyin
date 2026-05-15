@@ -51,19 +51,28 @@
     video, .image-full {
       width: 100%; height: 100%;
     }
+    .progress-wrap {
+      position: absolute; left: 8px; right: 8px; bottom: calc(54px + var(--safe-bottom)); z-index: 25;
+      height: 32px; display: flex; align-items: center;
+      -webkit-tap-highlight-color: transparent;
+    }
     .progress-bar {
-      position: absolute; left: 0; right: 0; bottom: 0; z-index: 25; height: 3px;
-      background: rgba(255,255,255,.22);
+      width: 100%; height: 4px; border-radius: 2px;
+      background: rgba(255,255,255,.25);
+      position: relative;
     }
     .progress-fill {
-      height: 100%; width: 0%; background: var(--accent);
-      transition: width 0.1s linear;
+      height: 100%; width: 0%; border-radius: 2px;
+      background: var(--accent);
       pointer-events: none;
     }
-    .progress-seek {
-      position: absolute; left: 0; right: 0; bottom: 0; z-index: 26; height: 28px;
-      cursor: pointer;
+    .progress-thumb {
+      position: absolute; top: -6px; width: 14px; height: 14px; border-radius: 50%;
+      background: #fff; left: 0%; margin-left: -7px;
+      pointer-events: none; opacity: 0;
+      transition: opacity 0.15s;
     }
+    .progress-wrap.active .progress-thumb { opacity: 1; }
     video { object-fit: contain; background: #000; }
     .image-full {
       object-fit: contain;
@@ -298,8 +307,9 @@ function renderSlides(items) {
     const mediaHtml = item.type === 'image'
       ? `<img class="image-full" src="${item.src}" alt="img" loading="lazy" decoding="async">`
       : `<video loop playsinline muted preload="none"></video>
-         <div class="progress-bar"><div class="progress-fill"></div></div>
-         <div class="progress-seek"></div>`;
+         <div class="progress-wrap">
+           <div class="progress-bar"><div class="progress-fill"></div><div class="progress-thumb"></div></div>
+         </div>`;
 
     div.innerHTML = `
       ${mediaHtml}
@@ -409,23 +419,46 @@ function bindProgressEvents(video, slide) {
   if (!video || video.dataset.progressBound) return;
   video.dataset.progressBound = '1';
 
+  const wrap = slide.querySelector('.progress-wrap');
+  const bar = slide.querySelector('.progress-bar');
   const fill = slide.querySelector('.progress-fill');
-  const seekBar = slide.querySelector('.progress-seek');
+  const thumb = slide.querySelector('.progress-thumb');
+  let dragging = false;
+
+  function updateUI(pct) {
+    fill.style.width = pct + '%';
+    thumb.style.left = pct + '%';
+  }
 
   video.addEventListener('timeupdate', () => {
-    if (!video.duration) return;
-    const pct = (video.currentTime / video.duration) * 100;
-    if (fill) fill.style.width = pct + '%';
+    if (dragging || !video.duration) return;
+    updateUI((video.currentTime / video.duration) * 100);
   });
 
-  if (seekBar) {
-    seekBar.addEventListener('click', (e) => {
-      if (!video.duration) return;
-      const rect = seekBar.getBoundingClientRect();
-      const pct = (e.clientX - rect.left) / rect.width;
-      video.currentTime = pct * video.duration;
-    });
+  function seekByClientX(clientX) {
+    const rect = bar.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    updateUI(pct * 100);
+    if (video.duration) video.currentTime = pct * video.duration;
   }
+
+  wrap.addEventListener('pointerdown', (e) => {
+    dragging = true;
+    wrap.classList.add('active');
+    seekByClientX(e.clientX);
+    e.preventDefault();
+  });
+
+  document.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    seekByClientX(e.clientX);
+  });
+
+  document.addEventListener('pointerup', () => {
+    if (!dragging) return;
+    dragging = false;
+    wrap.classList.remove('active');
+  });
 }
 
 function playCurrent() {
