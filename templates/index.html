@@ -51,6 +51,19 @@
     video, .image-full {
       width: 100%; height: 100%;
     }
+    .progress-bar {
+      position: absolute; left: 0; right: 0; bottom: 0; z-index: 25; height: 3px;
+      background: rgba(255,255,255,.22);
+    }
+    .progress-fill {
+      height: 100%; width: 0%; background: var(--accent);
+      transition: width 0.1s linear;
+      pointer-events: none;
+    }
+    .progress-seek {
+      position: absolute; left: 0; right: 0; bottom: 0; z-index: 26; height: 28px;
+      cursor: pointer;
+    }
     video { object-fit: contain; background: #000; }
     .image-full {
       object-fit: contain;
@@ -284,7 +297,9 @@ function renderSlides(items) {
 
     const mediaHtml = item.type === 'image'
       ? `<img class="image-full" src="${item.src}" alt="img" loading="lazy" decoding="async">`
-      : `<video loop playsinline muted preload="none"></video>`;
+      : `<video loop playsinline muted preload="none"></video>
+         <div class="progress-bar"><div class="progress-fill"></div></div>
+         <div class="progress-seek"></div>`;
 
     div.innerHTML = `
       ${mediaHtml}
@@ -388,6 +403,31 @@ function pauseAllVideos() {
   document.querySelectorAll('.swiper-slide video').forEach(v => v.pause());
 }
 
+let currentVideo = null;
+
+function bindProgressEvents(video, slide) {
+  if (!video || video.dataset.progressBound) return;
+  video.dataset.progressBound = '1';
+
+  const fill = slide.querySelector('.progress-fill');
+  const seekBar = slide.querySelector('.progress-seek');
+
+  video.addEventListener('timeupdate', () => {
+    if (!video.duration) return;
+    const pct = (video.currentTime / video.duration) * 100;
+    if (fill) fill.style.width = pct + '%';
+  });
+
+  if (seekBar) {
+    seekBar.addEventListener('click', (e) => {
+      if (!video.duration) return;
+      const rect = seekBar.getBoundingClientRect();
+      const pct = (e.clientX - rect.left) / rect.width;
+      video.currentTime = pct * video.duration;
+    });
+  }
+}
+
 function playCurrent() {
   const slides = document.querySelectorAll('.swiper-slide');
   slides.forEach(slide => {
@@ -397,6 +437,8 @@ function playCurrent() {
     if (idx === state.activeIndex) {
       if (!video.src) video.src = slide.dataset.src;
       video.muted = false;
+      bindProgressEvents(video, slide);
+      currentVideo = video;
       video.play().catch(() => {
         video.muted = true;
         video.play();
