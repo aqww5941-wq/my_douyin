@@ -8,7 +8,7 @@ services:
     expose: 
       - "8000"
     volumes:
-      - /home/aqww/crawler/Content:/app/content
+      - /home/aqww/spider/Content:/app/content
     environment:
       - MAX_WORKERS=4
 
@@ -24,6 +24,6 @@ services:
       # 1. 挂载配置文件
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       # 2. 关键：Nginx 也必须能看到视频文件，路径对应 nginx.conf 里的 alias
-      - /home/aqww/crawler/Content:/usr/share/nginx/html/content:ro
+      - /home/aqww/spider/Content:/usr/share/nginx/html/content:ro
     depends_on:
       - media-server

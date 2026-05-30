@@ -84,11 +84,11 @@ def scan_all_media_files():
                 ext = file_path.suffix.lower()
 
                 if ext in VIDEO_EXTS:
-                    if "normal/" in lower:
-                        FILE_CACHE["normal_videos"].append(rel_str)
                     if "douyin/" in lower:
+                        FILE_CACHE["normal_videos"].append(rel_str)
+                    if "tiktok/" in lower:
                         FILE_CACHE["tiktok_videos"].append(rel_str)
-                    if "x/video" in lower:
+                    if "x/videos" in lower:
                         FILE_CACHE["x_videos"].append(rel_str)
                     if "x/asmr/" in lower:
                         FILE_CACHE["asmr_audios"].append(rel_str)
@@ -100,7 +100,7 @@ def scan_all_media_files():
                     total += 1
 
                 elif ext in IMAGE_EXTS:
-                    if "x/image" in lower or "x/images" in lower:
+                    if "x/images" in lower:
                         FILE_CACHE["x_images"].append(rel_str)
                     total += 1
 
